@@ -2,7 +2,7 @@
 
 ## Ollama Vision Integration for Tile Prompting
 
-The TilePrompter node now includes Ollama vision capabilities, allowing you to generate contextual descriptions of tiles using AI vision models. This functionality is implemented in a separate node (McBoaty_TilePrompter_Ollama_v1) to preserve the original TilePrompter functionality.
+There is a new TilePrompter node with ollama intergration, allowing you to generate contextual descriptions of tiles using AI vision models. This functionality is implemented in a separate node (McBoaty_TilePrompter_Ollama_v1) to preserve the original TilePrompter functionality.
 
 ### Files:
 - `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main node implementation
