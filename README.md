@@ -13,22 +13,22 @@ The original TilePrompter node (`McBoaty_v5.py`) remains unchanged and fully fun
 ### Features:
 - Customizable system prompt and user query
 - Automatic model management with keep-alive settings
-- Preserves manually edited prompts
+- Preserves ollama edited prompts as if they were manually edited
 - Optional reference image input (experimental and intended to input the original full image - results may vary)
 
 Note: The tile indexing feature is currently not functional with Ollama prompting - all tiles will be processed when Ollama is enabled. While the node supports using a reference image to provide context for tile descriptions, in practice this hasn't consistently improved the quality of the generated descriptions.
 
 ### Requirements:
 - Ollama server running locally (default) or remotely
-- Compatible vision models (e.g., llava, bakllava)
+- Compatible vision models (I recommend minicpm-v)
 - Default URL: http://127.0.0.1:11434
 
 ### Usage:
 1. Enable Ollama prompting with the 'ollama_prompting_enable' switch
-2. Configure Ollama settings (URL, model, keep-alive)
+2. Configure Ollama settings (If model does not appear and server is running, update the URL and they will be fetched)
 3. Optionally customize system prompt and query
-4. Connect a reference image (usually the full image)
-5. Process tiles to get AI-generated descriptions
+4. Optionally connect a reference image (usually the original full image, this did not work well for me but sounded like a good idea)
+5. Run the node
 
 The original tile prompting functionality remains unchanged when Ollama is disabled.
 
