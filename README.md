@@ -1,5 +1,39 @@
 # ComfyUI MaraScott Nodes
 
+## Ollama Vision Integration for Tile Prompting
+
+The TilePrompter node now includes Ollama vision capabilities, allowing you to generate contextual descriptions of tiles using AI vision models. This functionality is implemented in a separate node (McBoaty_TilePrompter_Ollama_v1) to preserve the original TilePrompter functionality.
+
+### Files:
+- `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main node implementation
+- `web/assets/js/McBoaty_TilePrompter_Ollama_v1.js` - Frontend UI handling
+
+The original TilePrompter node (`McBoaty_v5.py`) remains unchanged and fully functional.
+
+### Features:
+- Customizable system prompt and user query
+- Automatic model management with keep-alive settings
+- Preserves manually edited prompts
+- Optional reference image input (experimental - results may vary)
+
+Note: The tile indexing feature is currently not functional with Ollama prompting - all tiles will be processed when Ollama is enabled. While the node supports using a reference image to provide context for tile descriptions, in practice this hasn't consistently improved the quality of the generated descriptions.
+
+### Requirements:
+- Ollama server running locally (default) or remotely
+- Compatible vision models (e.g., llava, bakllava)
+- Default URL: http://127.0.0.1:11434
+
+### Usage:
+1. Enable Ollama prompting with the 'ollama_prompting_enable' switch
+2. Configure Ollama settings (URL, model, keep-alive)
+3. Optionally customize system prompt and query
+4. Connect a reference image (usually the full image)
+5. Process tiles to get AI-generated descriptions
+
+The original tile prompting functionality remains unchanged when Ollama is disabled.
+
+---
+
 Turn ★ into ⭐ (top-right corner) if you like the project!
 
 **ComfyUI_MaraScott_nodes** is an extension set designed to improve the readability of [ComfyUI](https://github.com/comfyanonymous/ComfyUI) workflows and enhance output images for printing. It offers a **Bus** manager, an **Upscaler/Refiner** set of nodes for printing purposes, and an **Inpainting** set of nodes to fine-tune outputs.
