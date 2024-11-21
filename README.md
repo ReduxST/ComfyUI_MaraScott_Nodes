@@ -14,7 +14,7 @@ The original TilePrompter node (`McBoaty_v5.py`) remains unchanged and fully fun
 - Customizable system prompt and user query
 - Automatic model management with keep-alive settings
 - Preserves manually edited prompts
-- Optional reference image input (experimental - results may vary)
+- Optional reference image input (experimental and intended to input the original full image - results may vary)
 
 Note: The tile indexing feature is currently not functional with Ollama prompting - all tiles will be processed when Ollama is enabled. While the node supports using a reference image to provide context for tile descriptions, in practice this hasn't consistently improved the quality of the generated descriptions.
 
