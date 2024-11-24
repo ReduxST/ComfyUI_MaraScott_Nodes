@@ -4,6 +4,9 @@
 
 There is a new TilePrompter node with ollama intergration, allowing you to generate contextual descriptions of tiles using AI vision models. This functionality is implemented in a separate node (McBoaty_TilePrompter_Ollama_v1) to preserve the original TilePrompter functionality.
 
+## Known issues
+It does not work on linux  because of filename size limitations and the model picker doesn't work consistently.
+
 ### Files:
 - `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main node implementation
 - `web/assets/js/McBoaty_TilePrompter_Ollama_v1.js` - Frontend UI handling
