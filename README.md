@@ -20,7 +20,7 @@ Note: The tile indexing feature is currently not functional with Ollama promptin
 
 ### Requirements:
 - Ollama server running locally (default) or remotely
-- Compatible vision models (e.g., llava, bakllava)
+- Compatible vision models (e.g., minicpm-v, llava, baklla)
 - Default URL: http://127.0.0.1:11434
 
 ### Usage:
