@@ -599,7 +599,6 @@ app.registerExtension({
 		}
 	},
 });
-
 app.registerExtension({
     name: "Comfy.MaraScott.McBoaty_TilePrompter_Ollama_v1.Ollama",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
@@ -673,3 +672,4 @@ app.registerExtension({
         }
     },
 });
+

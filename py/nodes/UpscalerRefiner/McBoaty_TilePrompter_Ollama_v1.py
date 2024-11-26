@@ -12,6 +12,7 @@ import random
 from io import BytesIO
 import base64
 from ollama import Client
+from pathlib import Path
 
 from .... import root_dir, __MARASCOTT_TEMP__
 from ...utils.version import VERSION
@@ -66,14 +67,17 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                 }),
                 "ollama_query": ("STRING", {
                     "multiline": True,
-                    "default": "The first image shows the complete/full image. The second image shows a section/tile of that image. Describe how the content in the second image relates to or fits within the context of the first image."
+                    "default": "Describe the image."
                 }),
                 "ollama_debug": (["enable", "disable"], {"default": "disable"}),
                 "ollama_url": ("STRING", {
                     "multiline": False,
                     "default": "http://127.0.0.1:11434"
                 }),
-                "ollama_model": ((), {}),  # Empty tuple for JS population
+                "ollama_model": ("STRING", {
+                    "multiline": False,
+                    "default": "llava"
+                }),
                 "ollama_keep_alive": ("INT", {
                     "default": 5,
                     "min": -1,
@@ -86,7 +90,6 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                     "max": 2 ** 31,
                     "step": 1
                 }),
-                "ollama_reference_image": ("IMAGE",)
             }
         }
 
@@ -179,26 +182,40 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
             file = f"{filename}_{index:05}.png"
             file_path = os.path.join(full_output_folder, file)
             
+            # First save the tile
+            if not os.path.exists(file_path):
+                i = 255. * tile.cpu().numpy()
+                img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+                metadata = None
+                img.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4)                
+
+            # Then process with Ollama if enabled
             if ollama_enabled:
-                reference_image = kwargs.get('ollama_reference_image', input_tiles[0])
-                
                 # Get keep_alive value and adjust if needed
                 keep_alive = kwargs.get('ollama_keep_alive')
                 if keep_alive == 0:
-                    # If this isn't the last tile, use 0.1 minutes (6 seconds) to keep model loaded
                     if index < len(input_tiles) - 1:
-                        keep_alive = 0.1  # 6 seconds in minutes
+                        keep_alive = 0.1
                 
+                # Use the actual file path that we just saved
+                tile_path = Path(file_path)  # Convert to Path object
+                
+                # Get debug setting from kwargs
+                debug = kwargs.get('ollama_debug')
+                if debug == "enable":
+                    log(f"Processing tile file: {tile_path}", None, None, f"Node {self.INFO.id}")
+                    
                 ollama_response = self.process_ollama_vision(
-                    reference_image=reference_image,
                     tile_image=tile,
+                    tile_index=index,
+                    tile_path=tile_path,  # Pass the actual file path
                     query=kwargs.get('ollama_query'),
                     system_prompt=kwargs.get('ollama_system_prompt'),
-                    debug=kwargs.get('ollama_debug'),
+                    debug=debug,  # Pass the debug setting
                     url=kwargs.get('ollama_url'),
                     model=kwargs.get('ollama_model'),
                     seed=kwargs.get('ollama_seed'),
-                    keep_alive=keep_alive  # Pass adjusted keep_alive value
+                    keep_alive=keep_alive
                 )
                 if ollama_response:
                     # Update output prompts
@@ -214,12 +231,6 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                     _input_prompts_edited[index] = ollama_response
                     MS_Cache.set(cache_name_edited, tuple(_input_prompts_edited))
             
-            if not os.path.exists(file_path):
-                i = 255. * tile.cpu().numpy()
-                img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-                metadata = None
-                img.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4)                
-
             results.append({
                 "filename": file,
                 "subfolder": subfolder,
@@ -254,33 +265,24 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
         self.output_dir = folder_paths.get_temp_directory()
         
     @classmethod
-    def process_ollama_vision(self, reference_image, tile_image, query, system_prompt, debug, url, model, seed, keep_alive):
+    def process_ollama_vision(self, tile_image, tile_index, tile_path, query, system_prompt, debug, url, model, seed, keep_alive):
         try:
-            # Convert both images to base64
-            images_b64 = []
-            for image in [reference_image, tile_image]:
-                # Handle tensor shape properly
-                if len(image.shape) == 4:
-                    image = image.squeeze(0).squeeze(0)
-                i = 255. * image.cpu().numpy()
-                img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-                buffered = BytesIO()
-                img.save(buffered, format="PNG")
-                img_bytes = base64.b64encode(buffered.getvalue())
-                images_b64.append(str(img_bytes, 'utf-8'))
+            if debug == "enable":
+                log(f"[Ollama Vision] Starting processing tile {tile_index}:", None, None, f"Node {self.INFO.id}")
+                log(f"  Model: {model}", None, None, f"Node {self.INFO.id}")
+                log(f"  URL: {url}", None, None, f"Node {self.INFO.id}")
+                log(f"  Keep Alive: {keep_alive}m", None, None, f"Node {self.INFO.id}")
+                log(f"  Seed: {seed}", None, None, f"Node {self.INFO.id}")
 
             # Create Ollama client and generate response
             client = Client(host=url)
             
             if debug == "enable":
-                log(f"""[Ollama Vision]
-                request query params:
-                - query: {query}
-                - url: {url}
-                - model: {model}
-                """, None, None, f"Node {self.INFO.id}")
+                log(f"[Ollama Vision] Sending request:", None, None, f"Node {self.INFO.id}")
+                log(f"  System prompt length: {len(system_prompt)} chars", None, None, f"Node {self.INFO.id}")
+                log(f"  Query: {query}", None, None, f"Node {self.INFO.id}")
 
-            # Use chat endpoint instead of generate
+            start_time = time.time()
             response = client.chat(
                 model=model,
                 messages=[
@@ -291,7 +293,7 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                     {
                         'role': 'user',
                         'content': query,
-                        'images': images_b64
+                        'images': [tile_path]
                     }
                 ],
                 options={
@@ -299,13 +301,19 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                 },
                 keep_alive=f"{keep_alive}m"
             )
+            end_time = time.time()
 
             if debug == "enable":
-                log(f"[Ollama Vision] Response: {response}", None, None, f"Node {self.INFO.id}")
+                log(f"[Ollama Vision] Response received:", None, None, f"Node {self.INFO.id}")
+                log(f"  Processing time: {end_time - start_time:.2f}s", None, None, f"Node {self.INFO.id}")
+                log(f"  Response length: {len(response['message']['content'])} chars", None, None, f"Node {self.INFO.id}")
 
-            return response['message']['content']  # Chat responses are in message.content
+            return response['message']['content']
         except Exception as e:
-            log(f"Ollama vision processing failed: {str(e)}", None, None, f"Node {self.INFO.id}")
+            log(f"[Ollama Vision] Error: {str(e)}", None, None, f"Node {self.INFO.id}")
+            if debug == "enable":
+                import traceback
+                log(f"  Traceback: {traceback.format_exc()}", None, None, f"Node {self.INFO.id}")
             return None
 
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/get_input_prompts")
