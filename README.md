@@ -7,6 +7,7 @@ A new node, McBoaty_TilePrompter_Ollama_v1, has been added that uses Ollama visi
 ### Files:
 - `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main node implementation
 - `web/assets/js/McBoaty_TilePrompter_Ollama_v1.js` - Frontend UI handling
+- `MaraScott_Nodes.py` - Slightly modified only to add the required node bindings to have the new node appear in comfyui
 
 The original TilePrompter node (`McBoaty_v5.py`) remains unchanged and fully functional.
 
