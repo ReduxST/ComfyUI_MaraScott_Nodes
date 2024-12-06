@@ -42,6 +42,10 @@ class McBoaty_TilePrompter_Ollama_v1:
                 "requeue": ("INT", { "label": "requeue (automatic or manual)", "default": 0, "min": 0, "max": 99999999999, "step": 1}),                
                 **NodePrompt.ENTRIES,
                 "ollama_prompting_enable": (["off", "on"], {"default": "off"}),
+                "ollama_process_index": ("STRING", {
+                    "multiline": False,
+                    "default": ""  # Empty means process all tiles
+                }),
                 "ollama_system_prompt": ("STRING", {
                     "multiline": True,
                     "default": """You are an expert in ekphrasis. Your task is to analyze the input image, discreetly and silently apply any requested image modifications in your imagination, then finally actually describe that updated image from your imagination using present-tense artistic language. Don't mention the original, only describe what the new one you just imagined looks like - and do it properly using the present tense like an artist's description.
@@ -177,20 +181,37 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
             except Exception as e:
                 log(f"Error deleting {file_path}: {e}", None, None, "Node {self.INFO.id} - ERROR")        
             
+        # Parse the ollama_process_index input
+        ollama_process_index = kwargs.get('ollama_process_index', '').strip()
+        if ollama_process_index:
+            try:
+                # Remove surrounding brackets if present
+                stripped = ollama_process_index.strip().strip('[]')
+                # Split by comma and convert to integers
+                indices = [int(idx.strip()) - 1 for idx in stripped.split(',') if idx.strip().isdigit()]
+                if not indices:
+                    raise ValueError("No valid indices found.")
+            except Exception as e:
+                log(f"Error parsing ollama_process_index: {e}. Expected format like '1, 2, 3, 24' or '[1, 2, 3, 24]'. Processing all tiles.", None, None, f"Node {self.INFO.id}")
+                indices = list(range(len(input_tiles)))
+        else:
+            # Process all tiles if no indices are specified
+            indices = list(range(len(input_tiles)))
+
         for index, tile in enumerate(input_tiles):
             full_output_folder, filename, counter, subfolder, subfolder_filename_prefix = folder_paths.get_save_image_path(f"MaraScott/{filename_prefix}", self.output_dir, tile.shape[1], tile.shape[0])
             file = f"{filename}_{index:05}.png"
             file_path = os.path.join(full_output_folder, file)
             
-            # First save the tile
+            # Save all tiles regardless of whether they'll be processed
             if not os.path.exists(file_path):
                 i = 255. * tile.cpu().numpy()
                 img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
                 metadata = None
                 img.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4)                
 
-            # Then process with Ollama if enabled
-            if ollama_enabled:
+            # Then process with Ollama if enabled and tile is in indices
+            if ollama_enabled and index in indices:
                 # Get keep_alive value and adjust if needed
                 keep_alive = kwargs.get('ollama_keep_alive')
                 if keep_alive == 0:
@@ -217,6 +238,7 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
                     seed=kwargs.get('ollama_seed'),
                     keep_alive=keep_alive
                 )
+
                 if ollama_response:
                     # Update output prompts
                     output_prompts = list(output_prompts)
