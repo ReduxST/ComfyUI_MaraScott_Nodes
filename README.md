@@ -1,17 +1,26 @@
-# ComfyUI MaraScott Nodes
+# MaraScott Nodes for ComfyUI modified to add extra standalone nodes.
 
-## Ollama Vision Integration for Tile Prompting
+## New nodes
 
-A new node, McBoaty_TilePrompter_Ollama_v1, has been added that uses Ollama vision capabilities to generate contextual descriptions of tiles using AI vision models. This node exists alongside the original TilePrompter node and provides an alternative way to generate tile descriptions through AI vision analysis.
+Two new nodes have been added to the original MaraScott nodes set for personal use cases. These additions were created to fulfill specific needs in my workflow and are being shared in case others find them useful. Please note that as these are personal modifications, support and maintenance may be limited or lacking.
 
-### Files:
-- `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main node implementation
-- `web/assets/js/McBoaty_TilePrompter_Ollama_v1.js` - Frontend UI handling
-- `MaraScott_Nodes.py` - Slightly modified only to add the required node bindings to have the new node appear in comfyui
+The new nodes are:
+1. McBoaty_TilePrompter_Ollama_v1, which uses Ollama vision capabilities to generate contextual descriptions of tiles using AI vision models
+2. McBoaty_Tiler, which allows selective combination of tiles from two versions of the same image. This is useful for when your previous final image had a few tiles with explicit flaws, you want to fix those by reprocessing them, but you want to use the original tiles for this processing rather than the upscaled ones. The refiner node already has an option that allows you to only refine specific tiles rather than the whole image.
 
-The original TilePrompter node (`McBoaty_v5.py`) remains unchanged and fully functional.
+- **McBoaty Tile Prompter (Ollama)**: A node that uses Ollama's local LLM models for automatic tile prompting.
 
-### Features:
+### New Files:
+- `py/nodes/UpscalerRefiner/McBoaty_TilePrompter_Ollama_v1.py` - Main Ollama node implementation
+- `web/assets/js/McBoaty_TilePrompter_Ollama_v1.js` - Ollama node frontend UI handling
+- `py/nodes/UpscalerRefiner/McBoaty_Tiler.py` - Main Tiler node implementation
+- `MaraScott_Nodes.py` - Modified to add the required node bindings for both new nodes
+
+- **McBoaty Tiler**: A node that selectively combines tiles from two versions of an image - an original and its pre-upscaled version.
+
+
+
+### Ollama Tile Prompter Features:
 - Customizable system prompt and user query
 - Automatic model management with keep-alive settings
 - Preserves manually edited prompts
@@ -32,6 +41,11 @@ Note: The tile indexing feature is currently not functional with Ollama promptin
 The original tile prompting functionality remains unchanged when Ollama is disabled. (or at least it should)
 
 ---
+The original nodes remain unchanged.
+-------------------
+# Original README:
+-------------------
+
 
 Turn ★ into ⭐ (top-right corner) if you like the project!
 
