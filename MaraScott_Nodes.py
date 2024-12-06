@@ -28,6 +28,7 @@ from .py.vendor.ComfyUI_JNodes.blob.main.py.prompting_nodes import TokenCounter 
 from .py.vendor.kohya_hiresfix.kohya_hiresfix import Hires as Hires_v1
 
 from .py.nodes.UpscalerRefiner.McBoaty_TilePrompter_Ollama_v1 import McBoaty_TilePrompter_Ollama_v1
+from .py.nodes.UpscalerRefiner.McBoaty_Tiler import McBoaty_Tiler  # New Tiler Node
 
 WEB_DIRECTORY = "./web/assets/js"
 
@@ -73,6 +74,7 @@ NODE_CLASS_MAPPINGS = {
     "MaraScott_laksjdjf_Hires_v1": Hires_v1,
 
     "MaraScottMcBoatyTilePrompter_Ollama_v1": McBoaty_TilePrompter_Ollama_v1,
+    "MaraScottMcBoatyTiler_v1": McBoaty_Tiler,  # New tiler node mapping
 }
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes 
@@ -118,6 +120,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MaraScott_laksjdjf_Hires_v1": "\ud83d\udc30 Apply Kohya's HiresFix (from laksjdjf) sd1.5 only /sd15",
 
     "MaraScottMcBoatyTilePrompter_Ollama_v1": "McBoaty TilePrompter (Ollama)",
+    "MaraScottMcBoatyTiler_v1": "\ud83d\udc30 Tiler - McBoaty [Standalone] v1 /u6",  # New tiler display name
 }
 
 print('\033[34m[MaraScott] \033[92mLoaded\033[0m')
