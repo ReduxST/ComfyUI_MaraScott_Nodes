@@ -93,14 +93,30 @@ export const McBoatyWidgets = {
 
         textarea.addEventListener('focusout', async function() {
             console.log('[McBoaty] Focusout event triggered on tile', index);
-            this.value = this.value.trim()
+            this.value = this.value.trim();
+            
             if(window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index] != this.value) {
                 console.log('[McBoaty] Detected prompt change for tile', index, 'New value:', this.value);
-                window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index] = this.value;
-                const res = await (await fetch(`/MaraScott/McBoaty/Ollama/v1/set_prompt?index=${index}&prompt=${this.value}&node=${this.dataNodeId}&clientId=${api.clientId}`)).json();
-				console.log('[McBoaty] Save response:', res);
-                const nodeWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
-                MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', ++nodeWidget.value);
+                
+                // Encode parameters properly
+                const encodedPrompt = encodeURIComponent(this.value);
+                const encodedIndex = encodeURIComponent(index);
+                const encodedNodeId = encodeURIComponent(this.dataNodeId);
+                
+                const url = `/MaraScott/McBoaty/Ollama/v1/set_prompt?index=${encodedIndex}&prompt=${encodedPrompt}&node=${encodedNodeId}&clientId=${api.clientId}`;
+                
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    console.log('[McBoaty] Save response:', data);
+                    
+                    const requeueWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
+                    if (requeueWidget) {
+                        MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', requeueWidget.value + 1);
+                    }
+                } catch (error) {
+                    console.error('[McBoaty] Save failed:', error);
+                }
             }
         });
 
