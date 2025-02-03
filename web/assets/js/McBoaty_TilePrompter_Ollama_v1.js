@@ -92,10 +92,13 @@ export const McBoatyWidgets = {
         textarea.dataNodeId = node.id;
 
         textarea.addEventListener('focusout', async function() {
+            console.log('[McBoaty] Focusout event triggered on tile', index);
             this.value = this.value.trim()
             if(window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index] != this.value) {
+                console.log('[McBoaty] Detected prompt change for tile', index, 'New value:', this.value);
                 window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index] = this.value;
                 const res = await (await fetch(`/MaraScott/McBoaty/Ollama/v1/set_prompt?index=${index}&prompt=${this.value}&node=${this.dataNodeId}&clientId=${api.clientId}`)).json();
+				console.log('[McBoaty] Save response:', res);
                 const nodeWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
                 MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', ++nodeWidget.value);
             }
