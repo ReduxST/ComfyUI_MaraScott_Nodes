@@ -98,15 +98,15 @@ export const McBoatyWidgets = {
             if(window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index] != this.value) {
                 console.log('[McBoaty] Detected prompt change for tile', index, 'New value:', this.value);
                 
-                // Encode parameters properly
-                const encodedPrompt = encodeURIComponent(this.value);
-                const encodedIndex = encodeURIComponent(index);
-                const encodedNodeId = encodeURIComponent(this.dataNodeId);
-                
-                const url = `/MaraScott/McBoaty/Ollama/v1/set_prompt?index=${encodedIndex}&prompt=${encodedPrompt}&node=${encodedNodeId}&clientId=${api.clientId}`;
+                // Create URL with proper encoding
+                const params = new URLSearchParams();
+                params.append('index', index);
+                params.append('prompt', this.value);
+                params.append('node', this.dataNodeId);
+                if (api.clientId) params.append('clientId', api.clientId);
                 
                 try {
-                    const response = await fetch(url);
+                    const response = await fetch(`/MaraScott/McBoaty/Ollama/v1/set_prompt?${params.toString()}`);
                     const data = await response.json();
                     console.log('[McBoaty] Save response:', data);
                     
