@@ -352,14 +352,15 @@ async def get_input_denoises(request):
     input_denoises = MS_Cache.get(cache_name, [])
     return web.json_response({ "denoises_in": input_denoises })
     
-@PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/set_prompt")
+@PromptServer.instance.routes.post("/MaraScott/McBoaty/Ollama/v1/set_prompt")
 async def set_prompt(request):
-    # Add request validation
-    print(f"[McBoaty] Raw query params: {dict(request.query)}")
+    # Read from POST data instead of query params
+    post_data = await request.post()
+    print(f"[McBoaty] Raw post data: {dict(post_data)}")
     
-    index = int(request.query.get("index", -1))
-    nodeId = request.query.get("node", "").strip() or None
-    prompt = request.query.get("prompt", None)
+    index = int(post_data.get("index", -1))
+    nodeId = post_data.get("node", "").strip() or None
+    prompt = post_data.get("prompt", None)
     
     # Add sanitization
     if nodeId == "undefined" or nodeId == "null":
