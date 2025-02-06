@@ -92,6 +92,14 @@ export const McBoatyWidgets = {
         textarea.dataNodeId = node.id;
 
         textarea.addEventListener('focusout', async function() {
+            const index = parseInt(this.dataset.index);
+            const nodeId = this.dataset.nodeId;
+            
+            if (isNaN(index) || index < 0 || !nodeId) {
+                console.error('[McBoaty] Invalid parameters:', {index, nodeId});
+                return;
+            }
+            
             console.log('[McBoaty] Focusout event triggered on tile', index);
             this.value = this.value.trim();
             
@@ -100,9 +108,9 @@ export const McBoatyWidgets = {
                 
                 // Create URL with proper encoding
                 const params = new URLSearchParams();
-                params.append('index', index);
+                params.append('index', String(index));
                 params.append('prompt', this.value);
-                params.append('node', this.dataNodeId);
+                params.append('node', String(nodeId));
                 if (api.clientId) params.append('clientId', api.clientId);
                 
                 try {
