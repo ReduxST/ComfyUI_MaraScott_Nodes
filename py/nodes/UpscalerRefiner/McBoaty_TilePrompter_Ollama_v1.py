@@ -26,6 +26,7 @@ from aiohttp import web
 import numpy as np
 from PIL import Image
 import json
+from urllib.parse import parse_qs
 
 class McBoaty_TilePrompter_Ollama_v1:
     @classmethod
@@ -354,19 +355,19 @@ async def get_input_denoises(request):
     
 @PromptServer.instance.routes.post("/MaraScott/McBoaty/Ollama/v1/set_prompt")
 async def set_prompt(request):
-    # Read from POST data instead of query params
-    post_data = await request.post()
-    print(f"[McBoaty] Raw post data: {dict(post_data)}")
+    # Properly parse POST data
+    data = parse_qs(await request.text())
     
-    index = int(post_data.get("index", -1))
-    nodeId = post_data.get("node", "").strip() or None
-    prompt = post_data.get("prompt", None)
+    # Extract values with fallbacks
+    index = int(data.get('index', ['-1'])[0])
+    nodeId = data.get('node', [None])[0]
+    prompt = data.get('prompt', [None])[0]
+
+    print(f"[McBoaty] Received POST data - index: {index}, node: {nodeId}")
     
-    # Add sanitization
-    if nodeId == "undefined" or nodeId == "null":
-        nodeId = None
-        
-    print(f"[McBoaty] Sanitized params - node: {repr(nodeId)}, index: {index}")
+    if not nodeId or not nodeId.isdigit():
+        print(f"[McBoaty] Invalid node ID: {nodeId}")
+        return web.json_response({"error": "Invalid node ID"}, status=400)
     
     cache_name = f'input_prompts_{nodeId}'
     cache_name_edited = f'{cache_name}_edited'

@@ -113,9 +113,9 @@ export const McBoatyWidgets = {
                 
                 // Create URL with proper encoding
                 const params = new URLSearchParams();
-                params.append('index', String(index));
+                params.append('index', index.toString());
+                params.append('node', nodeId.toString());
                 params.append('prompt', this.value);
-                params.append('node', String(nodeId));
                 if (api.clientId) params.append('clientId', api.clientId);
                 
                 try {
