@@ -354,18 +354,32 @@ async def get_input_denoises(request):
     
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/set_prompt")
 async def set_prompt(request):
-    prompt = request.query.get("prompt", None)
     index = int(request.query.get("index", -1))
     nodeId = request.query.get("node", None)
+    prompt = request.query.get("prompt", None)
+    
+    # Debug logging
+    print(f"[McBoaty] Received set_prompt - node: {nodeId}, index: {index}, prompt: {prompt[:20] if prompt else None}")
+    
     cache_name = f'input_prompts_{nodeId}'
     cache_name_edited = f'{cache_name}_edited'
+    
     _input_prompts = MS_Cache.get(cache_name, [])
     _input_prompts_edited = MS_Cache.get(cache_name_edited, _input_prompts)
-    if _input_prompts_edited and index < len(_input_prompts_edited):
-        _input_prompts_edited_list = list(_input_prompts_edited)
-        _input_prompts_edited_list[index] = prompt
-        _input_prompts_edited = tuple(_input_prompts_edited_list)
-        MS_Cache.set(cache_name_edited, _input_prompts_edited)
+    
+    if index >= 0 and index < len(_input_prompts_edited):
+        # Log before update
+        print(f"[McBoaty] Before update - Cache {cache_name_edited}: {_input_prompts_edited[index][:50]}")
+        
+        _input_prompts_edited = list(_input_prompts_edited)
+        _input_prompts_edited[index] = prompt
+        MS_Cache.set(cache_name_edited, tuple(_input_prompts_edited))
+        
+        # Log after update
+        print(f"[McBoaty] After update - Cache {cache_name_edited}: {_input_prompts_edited[index][:50]}")
+    else:
+        print(f"[McBoaty] Invalid index {index} for node {nodeId}")
+    
     return web.json_response(f"Tile {index} prompt has been updated :{prompt}")
 
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/set_denoise")
