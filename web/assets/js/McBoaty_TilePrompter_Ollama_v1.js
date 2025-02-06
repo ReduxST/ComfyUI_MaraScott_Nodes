@@ -68,7 +68,7 @@ export const McBoatyWidgets = {
     },
 
     WRAPPER: (key, index, prompt, tile, denoise, node) => {
-
+        console.log('[McBoaty] Creating tile', index, 'for node:', node?.id);
         const inputEl = document.createElement("div");
         inputEl.className = "comfy-wrapper-mcboaty";
         
@@ -94,6 +94,11 @@ export const McBoatyWidgets = {
         textarea.addEventListener('focusout', async function() {
             const index = parseInt(this.dataset.index);
             const nodeId = this.dataset.nodeId;
+            
+            console.log('[McBoaty] Validation - raw dataset:', {
+                index: this.dataset.index,
+                nodeId: this.dataset.nodeId
+            });
             
             if (isNaN(index) || index < 0 || !nodeId) {
                 console.error('[McBoaty] Invalid parameters:', {index, nodeId});

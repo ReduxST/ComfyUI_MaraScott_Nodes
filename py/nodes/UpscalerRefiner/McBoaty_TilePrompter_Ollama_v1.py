@@ -354,12 +354,18 @@ async def get_input_denoises(request):
     
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/set_prompt")
 async def set_prompt(request):
+    # Add request validation
+    print(f"[McBoaty] Raw query params: {dict(request.query)}")
+    
     index = int(request.query.get("index", -1))
-    nodeId = request.query.get("node", None)
+    nodeId = request.query.get("node", "").strip() or None
     prompt = request.query.get("prompt", None)
     
-    # Debug logging
-    print(f"[McBoaty] Received set_prompt - node: {nodeId}, index: {index}, prompt: {prompt[:20] if prompt else None}")
+    # Add sanitization
+    if nodeId == "undefined" or nodeId == "null":
+        nodeId = None
+        
+    print(f"[McBoaty] Sanitized params - node: {repr(nodeId)}, index: {index}")
     
     cache_name = f'input_prompts_{nodeId}'
     cache_name_edited = f'{cache_name}_edited'
