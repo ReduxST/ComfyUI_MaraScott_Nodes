@@ -119,7 +119,7 @@ export const McBoatyWidgets = {
                 if (api.clientId) params.append('clientId', api.clientId);
                 
                 try {
-                    const response = await fetch(`/MaraScott/McBoaty/Ollama/v1/set_prompt`, {
+                    const response = await fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/set_prompt`), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
