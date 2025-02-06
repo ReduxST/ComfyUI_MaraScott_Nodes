@@ -88,8 +88,8 @@ export const McBoatyWidgets = {
         textarea.className = "comfy-multiline-input";
         textarea.value = prompt || "";
         textarea.placeholder = "tile "+text.textContent;
-        textarea.dataId = "tile "+index;
-        textarea.dataNodeId = node.id;
+        textarea.dataset.index = index;
+        textarea.dataset.nodeId = node.id;
 
         textarea.addEventListener('focusout', async function() {
             const index = parseInt(this.dataset.index);
@@ -136,8 +136,6 @@ export const McBoatyWidgets = {
         input.className = "comfy-multiline-input";
         input.value = denoise || '';
         input.placeholder = "denoise "+text.textContent;
-        input.dataId = "tile "+index;
-        input.dataNodeId = node.id;
         input.addEventListener('focusout', async function() {
             this.value = this.value.trim()
             if (! McBoatyWidgets.validateDenoiseValue(this.value)) {
