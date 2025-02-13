@@ -67,6 +67,98 @@ export const McBoatyWidgets = {
         return parseFloat(strValue).toFixed(2);
     },
 
+    EXPORT_JSON: (node) => {
+        const exportData = {
+            prompts: window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts,
+            denoises: window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises,
+            nodeId: node.id,
+            version: 1
+        };
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadLink = document.createElement('a');
+        downloadLink.setAttribute('href', dataStr);
+        downloadLink.setAttribute('download', `mcboaty_prompts_${node.id}.json`);
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    },
+
+    IMPORT_JSON: async (node, file) => {
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+            
+            if (importData.version !== 1 || !Array.isArray(importData.prompts)) {
+                throw new Error('Invalid file format');
+            }
+
+            // Update prompts
+            for (const [index, prompt] of importData.prompts.entries()) {
+                const params = new URLSearchParams();
+                params.append('index', index);
+                params.append('node', node.id);
+                params.append('prompt', prompt);
+                await fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/set_prompt`), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: params.toString()
+                });
+            }
+
+            // Update denoises
+            if (Array.isArray(importData.denoises)) {
+                for (const [index, denoise] of importData.denoises.entries()) {
+                    await fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/set_denoise?index=${index}&denoise=${denoise}&node=${node.id}`));
+                }
+            }
+
+            // Immediately refresh UI without re-execution
+            // 1. Get fresh data from backend
+            const [promptsRes, denoisesRes] = await Promise.all([
+                fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/get_input_prompts?node=${node.id}`)),
+                fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/get_input_denoises?node=${node.id}`))
+            ]);
+            
+            const { prompts_in } = await promptsRes.json();
+            const { denoises_in } = await denoisesRes.json();
+
+            // 2. Update local state
+            window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts = prompts_in;
+            window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises = denoises_in;
+
+            // 3. Update visible textareas/inputs
+            node.widgets.forEach(widget => {
+                if (widget.type === "customtext") {
+                    // Find textarea element
+                    const textarea = widget.inputEl.querySelector('textarea[data-index]');
+                    if (textarea) {
+                        const index = parseInt(textarea.dataset.index);
+                        textarea.value = prompts_in[index] || "";
+                        // Trigger input event to update widget state
+                        textarea.dispatchEvent(new Event('input'));
+                    }
+
+                    // Find denoise input element
+                    const input = widget.inputEl.querySelector('input[placeholder^="denoise "]');
+                    if (input) {
+                        const index = parseInt(input.placeholder.replace('denoise ', '')) - 1;
+                        input.value = denoises_in[index] || "";
+                        input.dispatchEvent(new Event('input'));
+                    }
+                }
+            });
+
+            // Trigger refresh
+            const requeueWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
+            MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', requeueWidget.value + 1);
+            
+        } catch (error) {
+            console.error('Import failed:', error);
+            alert('Failed to import prompts: ' + error.message);
+        }
+    },
+
     WRAPPER: (key, index, prompt, tile, denoise, node) => {
         console.log('[McBoaty] Creating tile', index, 'for node:', node?.id);
         const inputEl = document.createElement("div");
@@ -183,13 +275,14 @@ export const McBoatyWidgets = {
                 inputEl.value = v;
             },
         });
+        
         widget.inputEl = inputEl;
         MaraScottMcBoatyOllamaNodeWidget.setValue(node, widget.name, prompt);
         
         textarea.addEventListener("input", () => {
             widget.callback?.(widget.value);
         });
-    
+
         return widget;
     }
 }
@@ -454,18 +547,74 @@ class MaraScottMcBoatyOllamaNodeWidget {
 	}
 
     static setPrompterInputs(node) {
-
         let index_list = (node.properties[this.INDEX.name] ?? this.INDEX.default).trim().split(",");
         index_list = (index_list.length === 1 && index_list[0] === '') ? [] : index_list;
         const index_filtered = index_list.map(num => Number(num) - 1);
 
         for (const [index] of window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts.entries()) {
             if (index_list.length == 0 || index_filtered.indexOf(index) > -1) {
-                const w = McBoatyWidgets.WRAPPER("tile "+index, index, window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index], window.marascott.McBoaty_TilePrompter_Ollama_v1.message.tiles[index], window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index], node);
+                const w = McBoatyWidgets.WRAPPER("tile "+index, index, 
+                    window.marascott.McBoaty_TilePrompter_Ollama_v1.message.prompts[index], 
+                    window.marascott.McBoaty_TilePrompter_Ollama_v1.message.tiles[index], 
+                    window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index], 
+                    node
+                );
             }
         }
 
+        // Add global buttons after creating all tiles
+        this.setGlobalButtons(node);
+    }
 
+    static setGlobalButtons(node) {
+        if (!node.buttonsAdded) {
+            // Create container
+            const buttonsEl = document.createElement("div");
+            buttonsEl.style.marginTop = "20px";
+            buttonsEl.style.paddingTop = "10px";
+            buttonsEl.style.borderTop = "1px solid #666";
+            buttonsEl.style.display = "flex";
+            buttonsEl.style.gap = "8px";
+            buttonsEl.style.justifyContent = "flex-end";
+
+            // Create buttons
+            const exportBtn = document.createElement("button");
+            exportBtn.textContent = "Export Parameters";
+            exportBtn.style.cssText = "padding:4px 8px;";
+            exportBtn.onclick = () => McBoatyWidgets.EXPORT_JSON(node);
+
+            const importBtn = document.createElement("button");
+            importBtn.textContent = "Import";
+            importBtn.style.cssText = "padding:4px 8px;";
+            importBtn.onclick = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => McBoatyWidgets.IMPORT_JSON(node, e.target.files[0]);
+                input.click();
+            };
+
+            buttonsEl.appendChild(exportBtn);
+            buttonsEl.appendChild(importBtn);
+
+            // Add as a proper widget
+            const buttonWidget = node.addDOMWidget(
+                "global_buttons", 
+                "custombuttons", 
+                buttonsEl, 
+                {
+                    getValue() { return null; },
+                    setValue() {},
+                    serializeValue: false
+                }
+            );
+            
+            // Force redraw
+            node.onResize?.(node.size);
+            node.graph.setDirtyCanvas(true, true);
+            
+            node.buttonsAdded = true;
+        }
     }
 
 }

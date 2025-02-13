@@ -343,22 +343,40 @@ Remember, the above is an EXAMPLE only - don't just copy it verbatim as not ever
 async def get_input_prompts(request):
     nodeId = request.query.get("node", None)
     cache_name = f'input_prompts_{nodeId}'
-    input_prompts = MS_Cache.get(cache_name, [])
+    cache_name_edited = f'{cache_name}_edited'  # Get edited cache name
+    # Get edited prompts if they exist, otherwise original prompts
+    input_prompts = MS_Cache.get(cache_name_edited, MS_Cache.get(cache_name, []))
     return web.json_response({ "prompts_in": input_prompts })
     
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/get_input_denoises")
 async def get_input_denoises(request):
     nodeId = request.query.get("node", None)
     cache_name = f'input_denoises_{nodeId}'
-    input_denoises = MS_Cache.get(cache_name, [])
+    cache_name_edited = f'{cache_name}_edited'  # Get edited cache name
+    # Get edited denoises if they exist, otherwise original denoises
+    input_denoises = MS_Cache.get(cache_name_edited, MS_Cache.get(cache_name, []))
     return web.json_response({ "denoises_in": input_denoises })
     
 @PromptServer.instance.routes.post("/MaraScott/McBoaty/Ollama/v1/set_prompt")
 async def set_prompt(request):
-    # Properly parse POST data
     data = parse_qs(await request.text())
     
-    # Extract values with fallbacks
+    # Handle batch updates
+    if 'batch' in data:
+        try:
+            batch_data = json.loads(data['batch'][0])
+            nodeId = batch_data['nodeId']
+            cache_name = f'input_prompts_{nodeId}'
+            cache_name_edited = f'{cache_name}_edited'
+            
+            # Update all prompts at once
+            MS_Cache.set(cache_name_edited, tuple(batch_data['prompts']))
+            return web.json_response({"status": "success"})
+            
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=400)
+    
+    # Existing single-update logic
     index = int(data.get('index', ['-1'])[0])
     nodeId = data.get('node', [None])[0]
     prompt = data.get('prompt', [None])[0]
