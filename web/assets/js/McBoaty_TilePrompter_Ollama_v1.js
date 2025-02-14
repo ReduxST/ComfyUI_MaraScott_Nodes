@@ -109,7 +109,16 @@ export const McBoatyWidgets = {
             // Update denoises
             if (Array.isArray(importData.denoises)) {
                 for (const [index, denoise] of importData.denoises.entries()) {
-                    await fetch(api.apiURL(`/MaraScott/McBoaty/Ollama/v1/set_denoise?index=${index}&denoise=${denoise}&node=${node.id}`));
+                    const params = new URLSearchParams();
+                    params.append('index', index);
+                    params.append('denoise', denoise);
+                    params.append('node', node.id);
+                    
+                    await fetch(api.apiURL('/MaraScott/McBoaty/Ollama/v1/set_denoise'), {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params.toString()
+                    });
                 }
             }
 
@@ -157,6 +166,27 @@ export const McBoatyWidgets = {
             console.error('Import failed:', error);
             alert('Failed to import prompts: ' + error.message);
         }
+    },
+
+    EXPORT_ZIP: (node) => {
+        const url = api.apiURL(`/MaraScott/McBoaty/Ollama/v1/export_zip?node=${node.id}`);
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Export failed');
+                return response.blob();
+            })
+            .then(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `mcboaty_export_${node.id}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            })
+            .catch(error => {
+                console.error('ZIP export failed:', error);
+                alert('Failed to export ZIP: ' + error.message);
+            });
     },
 
     WRAPPER: (key, index, prompt, tile, denoise, node) => {
@@ -240,17 +270,39 @@ export const McBoatyWidgets = {
         input.value = denoise || '';
         input.placeholder = "denoise "+text.textContent;
         input.addEventListener('focusout', async function() {
-            this.value = this.value.trim()
+            this.value = this.value.trim();
             if (! McBoatyWidgets.validateDenoiseValue(this.value)) {
                 this.value = '';
             } else {
                 this.value = McBoatyWidgets.formatDenoiseValue(this.value);
             }
             if(window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index] != this.value) {
-                window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index] = this.value;
-                const res = await (await fetch(`/MaraScott/McBoaty/Ollama/v1/set_denoise?index=${index}&denoise=${this.value}&node=${this.dataNodeId}&clientId=${api.clientId}`)).json();
-                const nodeWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
-                MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', ++nodeWidget.value);
+                const originalValue = window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index];
+                
+                try {
+                    const params = new URLSearchParams();
+                    params.append('index', index);
+                    params.append('denoise', this.value);
+                    params.append('node', node.id);
+
+                    const response = await fetch(api.apiURL('/MaraScott/McBoaty/Ollama/v1/set_denoise'), {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params.toString()
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    window.marascott.McBoaty_TilePrompter_Ollama_v1.message.denoises[index] = this.value;
+                    
+                    const nodeWidget = MaraScottMcBoatyOllamaNodeWidget.getByName(node, 'requeue');
+                    MaraScottMcBoatyOllamaNodeWidget.setValue(node, 'requeue', ++nodeWidget.value);
+
+                } catch (error) {
+                    console.error('Denoise save failed:', error);
+                    alert(`Failed to save denoise: ${error.message}`);
+                    this.value = originalValue;
+                }
             }
         });
         
@@ -594,8 +646,15 @@ class MaraScottMcBoatyOllamaNodeWidget {
                 input.click();
             };
 
+            // Add ZIP Export Button
+            const zipExportBtn = document.createElement("button");
+            zipExportBtn.textContent = "Export All+Images";
+            zipExportBtn.style.cssText = "padding:4px 8px;background:#2c3;";
+            zipExportBtn.onclick = () => McBoatyWidgets.EXPORT_ZIP(node);
+
             buttonsEl.appendChild(exportBtn);
             buttonsEl.appendChild(importBtn);
+            buttonsEl.appendChild(zipExportBtn);
 
             // Add as a proper widget
             const buttonWidget = node.addDOMWidget(

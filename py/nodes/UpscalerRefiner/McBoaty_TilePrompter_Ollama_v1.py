@@ -13,6 +13,8 @@ from io import BytesIO
 import base64
 from ollama import Client
 from pathlib import Path
+import zipfile
+import json
 
 from .... import root_dir, __MARASCOTT_TEMP__
 from ...utils.version import VERSION
@@ -408,21 +410,40 @@ async def set_prompt(request):
     
     return web.json_response(f"Tile {index} prompt has been updated :{prompt}")
 
-@PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/set_denoise")
+@PromptServer.instance.routes.post("/MaraScott/McBoaty/Ollama/v1/set_denoise")
 async def set_denoise(request):
-    denoise = request.query.get("denoise", None)
-    index = int(request.query.get("index", -1))
-    nodeId = request.query.get("node", None)
-    cache_name = f'input_denoises_{nodeId}'
-    cache_name_edited = f'{cache_name}_edited'
-    _input_denoises = MS_Cache.get(cache_name, [])
-    _input_denoises_edited = MS_Cache.get(cache_name_edited, _input_denoises)
-    if _input_denoises_edited and index < len(_input_denoises_edited):
-        _input_denoises_edited_list = list(_input_denoises_edited)
-        _input_denoises_edited_list[index] = denoise
-        _input_denoises_edited = tuple(_input_denoises_edited_list)
-        MS_Cache.set(cache_name_edited, _input_denoises_edited)
-    return web.json_response(f"Tile {index} denoise has been updated: {denoise}")
+    try:
+        # MATCH PROMPT'S PARAMETER HANDLING
+        data = await request.post()
+        index = int(data.get("index", -1))
+        denoise = data.get("denoise", "")
+        node_id = data.get("node", "")
+        
+        # VALIDATION (NEW)
+        if not node_id.isdigit() or index < 0:
+            return web.Response(status=400, text="Invalid parameters")
+
+        # PRESERVE EXISTING CACHE STRUCTURE
+        cache_name = f'input_denoises_{node_id}'
+        cache_name_edited = f'{cache_name}_edited'
+        original = MS_Cache.get(cache_name, [])
+        edited = list(MS_Cache.get(cache_name_edited, original))
+
+        # EXPAND ARRAY IF NEEDED (FIX FOR NEW INDICES)
+        while len(edited) <= index:
+            edited.append("")
+        
+        # UPDATE VALUE
+        edited[index] = denoise
+        
+        # PRESERVE TUPLE STORAGE
+        MS_Cache.set(cache_name_edited, tuple(edited))
+
+        return web.json_response({"status": "success"})
+
+    except Exception as e:
+        print(f"[McBoaty] Denoise update error: {str(e)}")
+        return web.Response(status=500, text=str(e))
 
 @PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/tile_prompt")
 async def tile_prompt(request):
@@ -447,3 +468,47 @@ async def tile_prompt(request):
         return web.Response(status=404)
 
     return web.json_response(f"here is the prompt \n{image_path}")
+
+@PromptServer.instance.routes.get("/MaraScott/McBoaty/Ollama/v1/export_zip")
+async def export_zip(request):
+    node_id = request.query.get("node", "")
+    if not node_id.isdigit():
+        return web.Response(status=400, text="Invalid node ID")
+
+    # Get existing export data
+    prompt_cache = f'input_prompts_{node_id}_edited'
+    denoise_cache = f'input_denoises_{node_id}_edited'
+    export_data = {
+        "version": 1,
+        "nodeId": node_id,
+        "prompts": MS_Cache.get(prompt_cache, []),
+        "denoises": MS_Cache.get(denoise_cache, [])
+    }
+
+    # Find tile images
+    temp_dir = Path(__MARASCOTT_TEMP__)
+    pattern = f"McBoaty_temp_tilePrompter_id_{node_id}_*.png"
+    tile_files = list(temp_dir.glob(pattern))
+    
+    if not tile_files and not export_data["prompts"]:
+        return web.Response(status=404, text="No data to export")
+
+    # Create ZIP
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        # Add images
+        for idx, tile_path in enumerate(sorted(tile_files)):
+            arcname = f"tiles/tile_{idx+1:03d}.png"
+            zip_file.write(tile_path, arcname)
+        
+        # Add existing JSON format
+        zip_file.writestr("prompts.json", json.dumps(export_data, indent=2))
+
+    zip_buffer.seek(0)
+    return web.Response(
+        body=zip_buffer.getvalue(),
+        headers={
+            'Content-Type': 'application/zip',
+            'Content-Disposition': f'attachment; filename="mcboaty_export_{node_id}.zip"'
+        }
+    )
